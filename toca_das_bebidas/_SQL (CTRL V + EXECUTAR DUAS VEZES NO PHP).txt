@@ -1,0 +1,176 @@
+CREATE DATABASE IF NOT EXISTS toca_das_bebidas 
+CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE toca_das_bebidas;
+
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    nome VARCHAR(255) NOT NULL,
+    data_nascimento DATE NOT NULL,
+    sexo ENUM('masculino', 'feminino', 'outro') NOT NULL,
+    nome_materno VARCHAR(255) NOT NULL,
+    cpf VARCHAR(14) NOT NULL UNIQUE,
+    celular VARCHAR(15) NOT NULL,
+    telefone_fixo VARCHAR(14) NULL,
+    endereco TEXT NOT NULL,
+    login VARCHAR(100) NOT NULL UNIQUE,
+    senha_hash VARCHAR(255) NOT NULL,
+    perfil ENUM('comum', 'master') NOT NULL DEFAULT 'comum',
+    autenticacao_2fa BOOLEAN NOT NULL DEFAULT FALSE, -- Coluna nova
+    cep VARCHAR(10) NULL, -- Coluna nova
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sessoes_2fa (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    token VARCHAR(64) NOT NULL UNIQUE,
+    pergunta_tipo ENUM('mae', 'nascimento', 'cep') NOT NULL,
+    tentativas TINYINT DEFAULT 0,
+    expires_at DATETIME NOT NULL,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS produtos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    descricao TEXT,
+    preco DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    categoria VARCHAR(50),
+    imagem_url VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS produto_variacoes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    produto_id INT NOT NULL,
+    descricao VARCHAR(100) NOT NULL,
+    preco DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS carrinho_itens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    produto_id INT NOT NULL,
+    variacao_id INT NULL,
+    quantidade INT NOT NULL,
+    preco_unitario_salvo DECIMAL(10, 2) NOT NULL,  
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE CASCADE,
+    FOREIGN KEY (variacao_id) REFERENCES produto_variacoes(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS logs_autenticacao (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(45),
+    sucesso BOOLEAN,
+    tipo_autenticacao VARCHAR(20) DEFAULT 'login', -- Adicionado para diferenciar login normal de 2FA
+    tentativas_2fa INT DEFAULT 0, -- Adicionado para logar tentativas
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS logs_atividades (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    acao VARCHAR(50) NOT NULL, -- Ex: 'Login', 'Logout'
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip VARCHAR(45),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+-- INSERÇÃO DE DADOS PADRÃO --
+
+INSERT INTO usuarios 
+    (email, nome, data_nascimento, sexo, nome_materno, cpf, celular, endereco, login, senha_hash, perfil) 
+VALUES 
+    (
+        'admin@tocadasbebidas.com',
+        'Admin Master',
+        '2000-01-01',
+        'outro',
+        'admin',
+        '000.000.000-00',
+        '(00) 00000-0000',
+        'Toca das Bebidas',
+        'admin',
+        '$2y$10$S.G7QzY.t9J0m8W.V8/1BuwP.EiY7G.gJtO.S4t.Zg4w/8K.X1uS.', -- Senha 'Admin123'
+        'master'
+    );
+
+-- CERVEJA
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Heineken', 'Cerveja', 0.00, 'assets/img/Brejas/heineken.jpg');
+SET @last_id = LAST_INSERT_ID(); 
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 6.00), (@last_id, '6 unidades', 35.00), (@last_id, '12 unidades', 60.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Stella Artois', 'Cerveja', 0.00, 'assets/img/Brejas/stella artois.jpg');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 4.50), (@last_id, '6 unidades', 27.00), (@last_id, '12 unidades', 48.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Budweiser', 'Cerveja', 0.00, 'assets/img/Brejas/budweiser.jpg');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 1.99), (@last_id, '6 unidades', 10.00), (@last_id, '12 unidades', 20.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Corona', 'Cerveja', 0.00, 'assets/img/Brejas/corona.jpg');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 4.00), (@last_id, '6 unidades', 24.00), (@last_id, '12 unidades', 44.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Imperio', 'Cerveja', 0.00, 'assets/img/Brejas/imperio.jpg');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 4.00), (@last_id, '6 unidades', 24.00), (@last_id, '12 unidades', 44.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Becks', 'Cerveja', 0.00, 'assets/img/Brejas/becks.jpg');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 6.00), (@last_id, '6 unidades', 35.00), (@last_id, '12 unidades', 60.00);
+
+-- CATEGORIA: LICOR
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('43', 'Licor', 0.00, 'assets/img/LICOR/43.webp');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 118.00), (@last_id, '3 unidades', 340.00), (@last_id, '5 unidades', 531.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Cointreau', 'Licor', 0.00, 'assets/img/LICOR/cointreau.webp');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 125.00), (@last_id, '3 unidades', 348.00), (@last_id, '5 unidades', 548.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Amarula', 'Licor', 0.00, 'assets/img/LICOR/amarula.webp');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 129.00), (@last_id, '3 unidades', 355.00), (@last_id, '5 unidades', 565.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Ballena Morango', 'Licor', 0.00, 'assets/img/LICOR/BallenaMorango.webp');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 175.00), (@last_id, '3 unidades', 380.00), (@last_id, '5 unidades', 610.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Amarula Coffe', 'Licor', 0.00, 'assets/img/LICOR/amarulaCoffe.webp');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, '1 unidade', 129.00), (@last_id, '3 unidades', 355.00), (@last_id, '5 unidades', 565.00);
+
+INSERT INTO produtos (nome, categoria, preco, imagem_url) VALUES ('Amarula Raspberry', 'Licor', 0.00, 'assets/img/LICOR/amarulaRaspberry.webp');
+SET @last_id = LAST_INSERT_ID();
+INSERT INTO produto_variacoes (produto_id, descricao, preco) VALUES (@last_id, 'P', 129.00), (@last_id, 'M', 355.00), (@last_id, 'G', 560.00);
+
+-- WHISKY
+INSERT INTO produtos (nome, preco, categoria, imagem_url) VALUES 
+('Old Parr', 143.00, 'Whisky', 'assets/img/Whisky/Old Parr.webp'),
+('Johnnie walker Black', 158.00, 'Whisky', 'assets/img/Whisky/Johnnie walker Black.webp'),
+('Jack Daniels', 138.00, 'Whisky', 'assets/img/Whisky/Jack Daniels.webp');
+
+-- BEBIDA
+INSERT INTO produtos (nome, preco, categoria, imagem_url) VALUES 
+('Coca-Cola 1,5L', 10.00, 'Bebida', 'assets/img/bebidas/coca 1,5L.png'),
+('Coca-Cola Zero 1,5L', 10.00, 'Bebida', 'assets/img/bebidas/coca 1,5L 0.png'),
+('Guaraná Antartica 1,5L', 9.00, 'Bebida', 'assets/img/bebidas/guarana 1,5L.png'),
+('Guaraná Zero 1,5L', 9.00, 'Bebida', 'assets/img/bebidas/guarana 1,5L 0.png'),
+('Del Valle Uva', 7.00, 'Bebida', 'assets/img/bebidas/del valle uva.png'),
+('Del Valle Pêssego', 7.00, 'Bebida', 'assets/img/bebidas/del valle pessego.png'),
+('Del Valle Manga', 7.00, 'Bebida', 'assets/img/bebidas/del valle manga.png'),
+('Del Valle Maracujá', 7.00, 'Bebida', 'assets/img/bebidas/del valle maracuja.png'),
+('Tônica', 5.00, 'Bebida', 'assets/img/bebidas/tonica.png'),
+('Schweppes', 5.00, 'Bebida', 'assets/img/bebidas/schweppes.png'),
+('H2O', 6.00, 'Bebida', 'assets/img/bebidas/h20.png'),
+('Limoneto', 6.00, 'Bebida', 'assets/img/bebidas/limoneto.png'),
+('Água com gás', 4.00, 'Bebida', 'assets/img/bebidas/agua c gas.png'),
+('Água sem gás', 3.00, 'Bebida', 'assets/img/bebidas/agua s gas.png'),
+('Guaracamp', 2.00, 'Bebida', 'assets/img/bebidas/guaracamp.png'),
+('Água 1.5L', 5.00, 'Bebida', 'assets/img/bebidas/agua 1.5L.png');
